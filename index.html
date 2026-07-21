@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Simulate an e-Reader scanning cards to real Game Boy Advance games over a GB-Link USB adapter."
+    />
+    <title>GB-Link e-Reader</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/src/assets/styles/style.css" />
+  </head>
+  <body>
+    <main class="app" id="app">
+      <header>
+        <h1>GB-Link <em><span class="e-logo">e</span>-Reader</em></h1>
+        <p class="subtitle">
+          Upload a dotcode card and send it to a linked GBA game over USB
+        </p>
+        <div class="supported-games">
+          <span class="supported-games-label">Supported games</span>
+          <ul>
+            <li>Pokémon Ruby / Sapphire <span class="region-tag">USA / JPN</span></li>
+            <li>Super Mario Advance 4 <span class="region-tag">USA / JPN</span></li>
+          </ul>
+        </div>
+      </header>
+
+      <section class="panel">
+        <label for="game-select">Game</label>
+        <select id="game-select" aria-label="Select target game"></select>
+        <details id="game-guide" class="game-guide" hidden>
+          <summary class="game-guide-summary">
+            <span class="game-guide-summary-icon" aria-hidden="true">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="11" x2="12" y2="16" />
+                <circle cx="12" cy="8" r="0.5" fill="currentColor" stroke="none" />
+              </svg>
+            </span>
+            <span class="game-guide-summary-text">
+              <span class="game-guide-summary-title">How to start</span>
+              <span class="game-guide-summary-hint">In-game steps to unlock and receive your card</span>
+            </span>
+          </summary>
+          <div id="game-guide-body" class="game-guide-body"></div>
+        </details>
+      </section>
+
+      <section class="panel">
+        <div
+          class="drop-zone"
+          id="drop-zone"
+          tabindex="0"
+          role="button"
+          aria-label="Upload card file"
+        >
+          <input
+            id="card-file"
+            type="file"
+            multiple
+            accept=".bin,.raw,.dc,.sav,application/octet-stream"
+            aria-describedby="card-info"
+          />
+          <svg
+            class="drop-zone-arrow"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="3" x2="12" y2="15" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="5" y1="21" x2="19" y2="21" />
+          </svg>
+          <span class="drop-zone-label">Drop e-Reader card file here</span>
+          <span class="drop-zone-sub">or click to browse</span>
+        </div>
+        <div class="card-info-wrap">
+          <p id="card-info" class="card-info">No card loaded.</p>
+          <div id="card-display" class="card-display hidden" aria-live="polite">
+            <div class="card-display-header">
+              <span id="card-display-title" class="card-display-title"></span>
+              <span id="card-display-badge" class="card-type-badge"></span>
+            </div>
+            <p id="card-display-sub" class="card-display-sub"></p>
+          </div>
+          <p class="card-info card-formats" id="card-formats"></p>
+        </div>
+      </section>
+
+      <section class="status-panel">
+        <div class="stepper" id="stepper">
+          <div class="stepper-step" data-step="connect">
+            <div class="step-node"></div>
+            <span>Connect</span>
+          </div>
+          <div class="stepper-line"></div>
+          <div class="stepper-step" data-step="card">
+            <div class="step-node"></div>
+            <span>Card</span>
+          </div>
+          <div class="stepper-line"></div>
+          <div class="stepper-step" data-step="game">
+            <div class="step-node"></div>
+            <span>In game</span>
+          </div>
+          <div class="stepper-line"></div>
+          <div class="stepper-step" data-step="scan">
+            <div class="step-node"></div>
+            <span>Scan</span>
+          </div>
+          <div class="stepper-line"></div>
+          <div class="stepper-step" data-step="done">
+            <div class="step-node"></div>
+            <span>Done</span>
+          </div>
+        </div>
+
+        <div class="status-row">
+          <span id="status-indicator" class="indicator"></span>
+          <p id="status-text" class="status">Ready</p>
+        </div>
+        <p id="detail-text" class="detail"></p>
+
+        <div id="instruction-box" class="instruction-box">
+          <span class="instruction-label">Next step</span>
+          <span id="instruction-text"
+            >Choose a game, upload a supported card, then connect your GB-Link
+            adapter.</span
+          >
+        </div>
+      </section>
+
+      <div class="actions">
+        <button type="button" id="connect-btn" class="primary">
+          Connect Game Boy
+        </button>
+        <button type="button" id="disconnect-btn" class="secondary" disabled>
+          Disconnect
+        </button>
+      </div>
+
+      <section class="log-panel" id="log-panel" aria-label="Activity log" hidden>
+        <div class="log-header">
+          <span class="log-label">Log</span>
+          <button
+            type="button"
+            id="copy-log-btn"
+            class="secondary log-copy-btn"
+          >
+            Copy log
+          </button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+
+      <footer>
+        <p>
+          Requires Chrome, Edge, or Firefox and a
+          <a href="https://gblink.io" target="_blank" rel="noopener"
+            >GB-Link USB adapter</a
+          >.
+        </p>
+        <p>
+          Project by
+          <a href="https://github.com/raphaelz" target="_blank" rel="noopener"
+            >raphaelz</a
+          >
+          · <a href="#">Project source</a>
+        </p>
+        <p class="footer-brand">
+          <img src="/favicon.ico" alt="" width="16" height="16" />
+          <a href="https://gblink.io" target="_blank" rel="noopener"
+            >GB-Link Project</a
+          >
+        </p>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+    <script src="/launcher-return.js"></script>
+  </body>
+</html>

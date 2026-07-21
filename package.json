@@ -1,0 +1,18 @@
+{
+  "name": "gblink-e-reader",
+  "version": "0.1.0",
+  "description": "GB-Link e-Reader — simulate e-Reader card scans to GBA games over link cable",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-basic-ssl": "^2.0.0",
+    "terser": "^5.48.0",
+    "vite": "^6.0.0"
+  }
+}
