@@ -4,12 +4,12 @@ export const CARD_PAYLOAD_SIZE = 0x7ce;
 
 const SMA4_USEFUL_LINKS = [
   {
-    label: 'Smaghetti level editor',
-    href: 'https://smaghetti.mattgreer.dev/editor/',
+    label: 'SMA4 level editor',
+    href: 'https://sma4.gblink.io/editor/',
   },
   {
     label: 'Popular custom levels',
-    href: 'https://smaghetti.mattgreer.dev/levels/all/popular/',
+    href: 'https://sma4.gblink.io/levels/all/popular/',
   },
 ];
 

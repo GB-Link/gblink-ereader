@@ -232,7 +232,7 @@ export function loadEreaderCard(bytes, filename = '') {
 
   if (looksLikeSma4Save(bytes)) {
     const { bin, detail } = extractCardFromSma4Save(bytes);
-    return withUploadMeta({ bin, format: 'sav', label: 'SMA4 smaghetti save', detail }, filename);
+    return withUploadMeta({ bin, format: 'sav', label: 'SMA4 save', detail }, filename);
   }
 
   if (ext === '.sav' || looksLikeSav(bytes)) {
