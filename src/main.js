@@ -14,6 +14,7 @@ import { GAMES, getGame } from './games/index.js';
 import { loadEreaderCardUploads, formatAcceptAttribute, SUPPORTED_EXTENSIONS } from './cards/loader.js';
 import { detectCardGames, validateCardForGame } from './cards/detect.js';
 import { formatUploadLabel } from './cards/upload.js';
+import './launcher-return.js';
 
 const gameSelect = document.getElementById('game-select');
 const gameGuide = document.getElementById('game-guide');
