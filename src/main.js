@@ -9,7 +9,7 @@ import {
   onAdapterDisconnect,
   setWireLogHandler,
 } from './link/gblink.js';
-import { formatErdrWireMessage, setFirmwareWireLog, EREADER_PROFILE } from './link/ereader-mode.js';
+import { formatErdrWireMessage, setFirmwareWireLog, isSma4EreaderProfile } from './link/ereader-mode.js';
 import { GAMES, getGame } from './games/index.js';
 import { loadEreaderCardUploads, formatAcceptAttribute, SUPPORTED_EXTENSIONS } from './cards/loader.js';
 import { detectCardGames, validateCardForGame } from './cards/detect.js';
@@ -417,7 +417,7 @@ function startWireLogForGame(game) {
   if (game?.linkMode !== 'ereader') return;
   if (!game?.ereaderProfile) return;
   setFirmwareWireLog(true);
-  if (game.ereaderProfile === EREADER_PROFILE.SMA4 || game.ereaderProfile === EREADER_PROFILE.SMA4_JPN) return;
+  if (isSma4EreaderProfile(game.ereaderProfile)) return;
   setWireLogHandler((raw) => {
     const message = formatErdrWireMessage(raw);
     if (!message) return false;
