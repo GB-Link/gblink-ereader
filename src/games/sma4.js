@@ -60,6 +60,51 @@ export const SMA4_START_GUIDE_JPN = {
   ],
 };
 
+export const SMA4_START_GUIDE_EUR = {
+  sections: [
+    {
+      title: 'Before you start',
+      note:
+        'European SMA4 hides e-Reader menus until you unlock them with an e-Reader unlock save '
+        + '(by <strong>CaitSith2</strong>). You also need <strong>GB-Link firmware v2.2.3+</strong>.',
+      steps: [
+        'Update your adapter to <strong>firmware v2.2.3 or later</strong> if you have not already.',
+        '<a href="./saves/sma4-eur-gblink.sav" download="sma4-eur-gblink.sav">Download the e-Reader unlock save</a>, then use <a href="https://cartdoctor.gblink.io/" target="_blank" rel="noopener noreferrer">GB-Link Cart Doctor</a> to restore it to your EUR cartridge.',
+        'Boot the game with that save, then pick the EUR language option below that matches your in-game language. <strong>English is the default</strong> if you have not changed it.',
+        '<strong>Drop or browse for an e-Reader card file in the box below</strong> before connecting.',
+      ],
+    },
+    {
+      title: 'Demo / Power-Up',
+      steps: [
+        'On any world map, press <strong>R</strong> to open the card-scan menu.',
+        'Choose <strong>Demo Card</strong> or <strong>Power-Up Card</strong>, then click Connect Game Boy.',
+        'When prompted, click <strong>OK</strong> to start the card scan on the GBA.',
+      ],
+    },
+    {
+      title: 'Level Card',
+      steps: [
+        'From the File Select screen, scroll to the bottom and choose <strong>Level Card</strong>. You\'ll be warped to World-e.',
+        'Walk to the glowing Level Scan Portal and press <strong>A</strong>. Lakitu flies in.',
+        'Click Connect Game Boy. When prompted, click <strong>OK</strong> to start the card scan.',
+      ],
+    },
+  ],
+  links: [
+    {
+      label: 'Download e-Reader unlock save (CaitSith2)',
+      href: './saves/sma4-eur-gblink.sav',
+      download: 'sma4-eur-gblink.sav',
+    },
+    {
+      label: 'GB-Link Cart Doctor',
+      href: 'https://cartdoctor.gblink.io/',
+    },
+    ...SMA4_USEFUL_LINKS,
+  ],
+};
+
 export function getCardPayloadOffset(bytes) {
   if (bytes.length === CARD_PAYLOAD_SIZE) return 0;
   if (bytes.length === 2112) return 114;

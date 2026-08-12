@@ -6,6 +6,7 @@ import {
   CARD_PAYLOAD_SIZE,
   SMA4_START_GUIDE_USA,
   SMA4_START_GUIDE_JPN,
+  SMA4_START_GUIDE_EUR,
 } from './sma4.js';
 import {
   makePokemonGame,
@@ -68,31 +69,31 @@ export const GAMES = [
     id: 'sma4-eur',
     label: 'Super Mario Advance 4 (EUR English) 🇬🇧',
     ereaderProfile: EREADER_PROFILE.SMA4_EUR,
-    startGuide: SMA4_START_GUIDE_USA,
+    startGuide: SMA4_START_GUIDE_EUR,
   }),
   makeSma4Game({
     id: 'sma4-eur-fra',
     label: 'Super Mario Advance 4 (EUR French) 🇫🇷',
     ereaderProfile: EREADER_PROFILE.SMA4_EUR_FRA,
-    startGuide: SMA4_START_GUIDE_USA,
+    startGuide: SMA4_START_GUIDE_EUR,
   }),
   makeSma4Game({
     id: 'sma4-eur-ger',
     label: 'Super Mario Advance 4 (EUR German) 🇩🇪',
     ereaderProfile: EREADER_PROFILE.SMA4_EUR_GER,
-    startGuide: SMA4_START_GUIDE_USA,
+    startGuide: SMA4_START_GUIDE_EUR,
   }),
   makeSma4Game({
     id: 'sma4-eur-esp',
     label: 'Super Mario Advance 4 (EUR Spanish) 🇪🇸',
     ereaderProfile: EREADER_PROFILE.SMA4_EUR_ESP,
-    startGuide: SMA4_START_GUIDE_USA,
+    startGuide: SMA4_START_GUIDE_EUR,
   }),
   makeSma4Game({
     id: 'sma4-eur-ita',
     label: 'Super Mario Advance 4 (EUR Italian) 🇮🇹',
     ereaderProfile: EREADER_PROFILE.SMA4_EUR_ITA,
-    startGuide: SMA4_START_GUIDE_USA,
+    startGuide: SMA4_START_GUIDE_EUR,
   }),
 ];
 

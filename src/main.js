@@ -242,32 +242,42 @@ function updateGameGuide() {
       const item = document.createElement('li');
       const anchor = document.createElement('a');
       anchor.href = link.href;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
       anchor.className = 'game-guide-link';
+
+      if (link.download) {
+        anchor.setAttribute(
+          'download',
+          typeof link.download === 'string' ? link.download : '',
+        );
+      } else {
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+      }
 
       const label = document.createElement('span');
       label.textContent = link.label;
       anchor.appendChild(label);
 
-      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      icon.setAttribute('class', 'external-link-icon');
-      icon.setAttribute('viewBox', '0 0 16 16');
-      icon.setAttribute('aria-hidden', 'true');
-      icon.setAttribute('focusable', 'false');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute(
-        'd',
-        'M6.5 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.5'
-        + 'M10 2h4v4M14 2 8 8',
-      );
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke', 'currentColor');
-      path.setAttribute('stroke-width', '1.5');
-      path.setAttribute('stroke-linecap', 'round');
-      path.setAttribute('stroke-linejoin', 'round');
-      icon.appendChild(path);
-      anchor.appendChild(icon);
+      if (!link.download) {
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('class', 'external-link-icon');
+        icon.setAttribute('viewBox', '0 0 16 16');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute(
+          'd',
+          'M6.5 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V9.5'
+          + 'M10 2h4v4M14 2 8 8',
+        );
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', 'currentColor');
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        icon.appendChild(path);
+        anchor.appendChild(icon);
+      }
 
       item.appendChild(anchor);
       list.appendChild(item);
