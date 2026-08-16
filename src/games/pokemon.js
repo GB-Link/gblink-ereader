@@ -144,8 +144,8 @@ export function makePokemonGame({
       cardHint ??
       `${FORMAT_HINTS.bin}, ${FORMAT_HINTS.raw}, ${FORMAT_HINTS.mev}`,
     connectedInstruction:
-      'Connect the adapter BEFORE opening Mystery Event on the GBA (the cable path is '
-      + 'auto-detected at connect, and the Mystery Event screen interferes with detection). '
+      'Connect the adapter BEFORE opening Mystery Event on the GBA (with the cable setting '
+      + 'on auto-detect, the Mystery Event screen interferes with detection at connect). '
       + 'Then: Send card → Mystery Event → A on GBA. Needs firmware v2.2.2+.',
     getCardPayloadOffset,
     classifyCard(bytes) {

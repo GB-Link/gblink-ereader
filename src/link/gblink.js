@@ -515,14 +515,12 @@ async function sendUsbCommand(conn, bytes) {
 }
 
 async function applyCableOverride(conn, cableOverride, onProgress) {
-  // Always send the override — including AUTO (0), which clears any forced
-  // path a previous session left behind (the firmware keeps it until reboot).
-  const label = cableOverride === 2 ? 'GBC 6-pin (SD→GP4)'
-    : cableOverride === 1 ? 'GBA (SD→GP3)'
-    : 'auto-detect';
-  onProgress?.(`Choosing cable path: ${label}…`);
-  await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, cableOverride & 0xff]));
-  await new Promise((r) => setTimeout(r, 200));
+  if (cableOverride) {
+    const label = cableOverride === 2 ? 'GBC 6-pin (SD→GP4)' : 'GBA (SD→GP3)';
+    onProgress?.(`Choosing cable path: ${label}…`);
+    await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, cableOverride & 0xff]));
+    await new Promise((r) => setTimeout(r, 200));
+  }
   await sendControlCommand(conn, new Uint8Array([GBL_CMD.GET_CABLE_TYPE]));
   const cablePkt = await readCommandResponse(GBL_CMD.GET_CABLE_TYPE, 3000);
   const resolved = cablePkt?.[1] ?? null;
