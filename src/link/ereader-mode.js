@@ -39,7 +39,24 @@ export const EREADER_PROFILE = {
   POKEMON_RUBY: 2,
   SMA4_JPN: 3,
   POKEMON_RUBY_JPN: 4,
+  SMA4_EUR: 5,
+  SMA4_EUR_FRA: 6,
+  SMA4_EUR_GER: 7,
+  SMA4_EUR_ESP: 8,
+  SMA4_EUR_ITA: 9,
 };
+
+export function isSma4EreaderProfile(profile) {
+  return (
+    profile === EREADER_PROFILE.SMA4
+    || profile === EREADER_PROFILE.SMA4_JPN
+    || profile === EREADER_PROFILE.SMA4_EUR
+    || profile === EREADER_PROFILE.SMA4_EUR_FRA
+    || profile === EREADER_PROFILE.SMA4_EUR_GER
+    || profile === EREADER_PROFILE.SMA4_EUR_ESP
+    || profile === EREADER_PROFILE.SMA4_EUR_ITA
+  );
+}
 
 const PHASE_LABELS = {
   0: 'Idle',

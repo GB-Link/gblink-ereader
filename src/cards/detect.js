@@ -228,6 +228,11 @@ export function validateCardForGame(bin, gameId) {
   const game = {
     sma4: 'sma4',
     'sma4-jpn': 'sma4',
+    'sma4-eur': 'sma4',
+    'sma4-eur-fra': 'sma4',
+    'sma4-eur-ger': 'sma4',
+    'sma4-eur-esp': 'sma4',
+    'sma4-eur-ita': 'sma4',
     'pokemon-ruby': 'pokemon',
     'pokemon-ruby-jpn': 'pokemon',
   }[gameId];
