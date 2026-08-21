@@ -2,6 +2,9 @@ import { isPreloadedPayload, preloadCardToAdapter, runScan } from '../link/eread
 
 export const CARD_PAYLOAD_SIZE = 0x7ce;
 
+const SMA4_EUR_UNLOCK_SAVE_URL =
+  new URL('../assets/saves/sma4-eur-gblink.sav', import.meta.url).href;
+
 const SMA4_USEFUL_LINKS = [
   {
     label: 'SMA4 level editor',
@@ -69,7 +72,7 @@ export const SMA4_START_GUIDE_EUR = {
         + '(by <strong>CaitSith2</strong>). You also need <strong>GB-Link firmware v2.2.3+</strong>.',
       steps: [
         'Update your adapter to <strong>firmware v2.2.3 or later</strong> if you have not already.',
-        '<a href="./saves/sma4-eur-gblink.sav" download="sma4-eur-gblink.sav">Download the e-Reader unlock save</a>, then use <a href="https://cartdoctor.gblink.io/" target="_blank" rel="noopener noreferrer">GB-Link Cart Doctor</a> to restore it to your EUR cartridge.',
+        `<a href="${SMA4_EUR_UNLOCK_SAVE_URL}" download="sma4-eur-gblink.sav">Download the e-Reader unlock save</a>, then use <a href="https://cartdoctor.gblink.io/" target="_blank" rel="noopener noreferrer">GB-Link Cart Doctor</a> to restore it to your EUR cartridge.`,
         'Boot the game with that save, then pick the EUR language option below that matches your in-game language. <strong>English is the default</strong> if you have not changed it.',
         '<strong>Drop or browse for an e-Reader card file in the box below</strong> before connecting.',
       ],
@@ -94,7 +97,7 @@ export const SMA4_START_GUIDE_EUR = {
   links: [
     {
       label: 'Download e-Reader unlock save (CaitSith2)',
-      href: './saves/sma4-eur-gblink.sav',
+      href: SMA4_EUR_UNLOCK_SAVE_URL,
       download: 'sma4-eur-gblink.sav',
     },
     {
