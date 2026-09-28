@@ -12,6 +12,7 @@ import {
   makePokemonGame,
   POKEMON_START_GUIDE_USA,
   POKEMON_START_GUIDE_JPN,
+  POKEMON_START_GUIDE_EMERALD_USA,
 } from './pokemon.js';
 import { EREADER_PROFILE } from '../link/ereader-mode.js';
 
@@ -52,6 +53,17 @@ export const GAMES = [
     ereaderProfile: EREADER_PROFILE.POKEMON_RUBY_JPN,
     cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_JPN,
+  }),
+  makePokemonGame({
+    id: 'pokemon-emerald',
+    label: 'Pokemon Emerald',
+    versionLabel: 'Emerald',
+    ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD,
+    cableOverride: 0,
+    startGuide: POKEMON_START_GUIDE_EMERALD_USA,
+    mysteryMenu: 'Mystery Gift',
+    connectedInstruction:
+      'On the GBA, go to the 2nd floor of any Pokémon Center and talk to the delivery man to start the e-Reader scan.',
   }),
   makeSma4Game({
     id: 'sma4',

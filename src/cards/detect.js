@@ -115,10 +115,15 @@ function matchesFromUpload(upload, classification) {
   }
 
   if (classification.kind === 'pokemon-mystery') {
+    const gameId = classification.gameIds?.includes('pokemon-emerald')
+      ? 'pokemon-emerald'
+      : 'pokemon-ruby';
     addMatch(matches, {
-      gameId: 'pokemon-ruby',
+      gameId,
       confidence: 'high',
-      reason: `Pokémon mystery event${titleBit}`,
+      reason: gameId === 'pokemon-emerald'
+        ? `Pokémon Emerald mystery gift${titleBit}`
+        : `Pokémon mystery event${titleBit}`,
     });
     return matches;
   }
@@ -186,7 +191,7 @@ export function detectCardGames(bin, { filename = '', format = '' } = {}) {
     classification.supported ||
     (matches.length > 0 &&
       !filenameKindKnown &&
-      matches.some((m) => ['sma4', 'pokemon-ruby'].includes(m.gameId))) ||
+      matches.some((m) => ['sma4', 'pokemon-ruby', 'pokemon-emerald'].includes(m.gameId))) ||
     ambiguous;
 
   const primary = supported
@@ -235,6 +240,8 @@ export function validateCardForGame(bin, gameId) {
     'sma4-eur-ita': 'sma4',
     'pokemon-ruby': 'pokemon',
     'pokemon-ruby-jpn': 'pokemon',
+    'pokemon-emerald': 'pokemon',
+    'pokemon-emerald-jpn': 'pokemon',
   }[gameId];
   if (game === 'sma4') {
     sma4GetCardPayloadOffset(bin);

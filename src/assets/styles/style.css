@@ -384,6 +384,11 @@ header h1 em {
   outline: none;
 }
 
+.drop-zone.awaiting-strip {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-hi));
+}
+
 .drop-zone.drag-over {
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 10%, var(--surface-hi));
@@ -420,6 +425,76 @@ header h1 em {
 .drop-zone-sub {
   font-size: 0.75rem;
   color: var(--muted);
+}
+
+.strip-set {
+  margin-top: 0.7rem;
+  padding: 0.65rem 0.75rem 0.55rem;
+  background: var(--surface-hi);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.strip-set.hidden { display: none; }
+
+.strip-set-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.strip-set-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.strip-set-clear {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+}
+
+.strip-set-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.strip-set-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.strip-set-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.strip-set-item-remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.15rem 0.3rem;
+}
+
+.strip-set-item-remove:hover,
+.strip-set-item-remove:focus-visible {
+  color: var(--text);
 }
 
 .card-info-wrap {

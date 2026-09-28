@@ -22,6 +22,7 @@
           <span class="supported-games-label">Supported games</span>
           <ul>
             <li>Pokémon Ruby / Sapphire <span class="region-tag">USA / JPN</span></li>
+            <li>Pokémon Emerald <span class="region-tag">USA</span></li>
             <li>Super Mario Advance 4 <span class="region-tag">USA / JPN / EUR</span></li>
           </ul>
         </div>
@@ -54,7 +55,7 @@
           id="drop-zone"
           tabindex="0"
           role="button"
-          aria-label="Upload card file"
+          aria-label="Upload card file or both strips of a two-strip card"
         >
           <input
             id="card-file"
@@ -78,8 +79,17 @@
             <polyline points="7 10 12 15 17 10" />
             <line x1="5" y1="21" x2="19" y2="21" />
           </svg>
-          <span class="drop-zone-label">Drop e-Reader card file here</span>
-          <span class="drop-zone-sub">or click to browse</span>
+          <span class="drop-zone-label" id="drop-zone-label">Drop e-Reader card file here</span>
+          <span class="drop-zone-sub" id="drop-zone-sub">or both strips of a two-strip card — order does not matter</span>
+        </div>
+        <div id="strip-set" class="strip-set hidden">
+          <div class="strip-set-header">
+            <span id="strip-set-title" class="strip-set-title">Strips</span>
+            <button type="button" id="strip-set-clear" class="secondary strip-set-clear">
+              Clear
+            </button>
+          </div>
+          <ul id="strip-set-list" class="strip-set-list"></ul>
         </div>
         <div class="card-info-wrap">
           <p id="card-info" class="card-info">No card loaded.</p>

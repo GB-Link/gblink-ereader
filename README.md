@@ -1,6 +1,6 @@
 # GB-Link e-Reader Emulation
 
-Bring the Nintendo e-Reader back from the dead. This is the web client for the **[GB-Link adapter](https://gblink.io)**, letting your browser scan Eon Tickets and other long-lost dotcode cards into real copies of Pokémon Ruby / Sapphire and Super Mario Advance 4.
+Bring the Nintendo e-Reader back from the dead. This is the web client for the **[GB-Link adapter](https://gblink.io)**, letting your browser scan Eon Tickets and other long-lost dotcode cards into real copies of Pokémon Ruby / Sapphire, Pokémon Emerald, and Super Mario Advance 4.
 
 ### Online Demo
 
@@ -20,6 +20,10 @@ Try it live at [ereader.gblink.io](https://ereader.gblink.io) (requires a GB-Lin
   - Battle-e cards (Trainer and Enigma Berry)
   - Custom / DLC cards
   - **How to start:** Beat Norman, then talk to the person by the PC in the Petalburg City Pokémon Center and enter the phrase "MYSTERY EVENT IS EXCITING". Save and reboot; **Mystery Event** now appears on the main menu. Select it, connect the adapter, send the card, then press **A** on the GBA when prompted to load the event.
+- **Pokémon Emerald** (USA)
+  - Mystery Gift cards
+  - Custom / DLC cards
+  - **How to start:** Beat Norman, then talk to the person by the PC in the Petalburg City Pokémon Center and enter the phrase "LINK TOGETHER WITH ALL". Save and reboot; **Mystery Gift** now appears on the main menu. Select it, connect the adapter, send the card, then press **A** on the GBA when prompted to load the event.
 - **Super Mario Advance 4** (USA and Japanese)
   - Demo cards
   - Power-Up cards
@@ -37,7 +41,7 @@ These e-Reader titles cannot be used with GB-Link e-Reader:
 - Mario Party-e
 - Pokémon Channel
 - Other e-Reader-only applications (Kirby, Air Hockey-e, Ice Climber-e, etc.)
-- Other Japan-only e-Reader titles (Pokémon FireRed / LeafGreen / Emerald e-Reader data, Pokémon Pinball: Ruby & Sapphire, Mega Man Zero 3, Mario vs. Donkey Kong, Pikmin 2-e, Donkey Kong-e, etc.)
+- Other Japan-only e-Reader titles (Pokémon FireRed / LeafGreen e-Reader data, Pokémon Pinball: Ruby & Sapphire, Mega Man Zero 3, Mario vs. Donkey Kong, Pikmin 2-e, Donkey Kong-e, etc.)
 
 ---
 

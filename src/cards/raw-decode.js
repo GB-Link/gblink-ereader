@@ -294,23 +294,108 @@ _ReedSolomon.d_kk = _ReedSolomon.d_nn - 2 * _ReedSolomon.d_tt;
 const ReedSolomon = new _ReedSolomon();
 
 const STRIP2_BIN_OFFSET = 0x51;
+const VPK_START = 0x53;
+const NINTENDO = new TextEncoder().encode('NINTENDO');
 
-function combineBinStrips(bins) {
-  if (bins.length === 1) return bins[0];
-  let total = bins[0].length;
-  for (let i = 1; i < bins.length; i++) total += bins[i].length - STRIP2_BIN_OFFSET;
-  const out = new Uint8Array(total);
-  out.set(bins[0], 0);
-  let offset = bins[0].length;
-  for (let i = 1; i < bins.length; i++) {
-    const tail = bins[i].subarray(STRIP2_BIN_OFFSET);
-    out.set(tail, offset);
-    offset += tail.length;
+export function readStripInfo(bin) {
+  if (!bin || bin.length < 0x30) {
+    return { stripNo: 1, stripCount: 1, vpkSize: 0 };
   }
-  return out;
+  if (bin[0] !== 0x00 || bin[1] !== 0x30) {
+    return { stripNo: 1, stripCount: 1, vpkSize: 0 };
+  }
+  for (let i = 0; i < 8; i++) {
+    if (bin[0x1a + i] !== NINTENDO[i]) {
+      return { stripNo: 1, stripCount: 1, vpkSize: 0 };
+    }
+  }
+  const sizeInfo =
+    bin[0x26] | (bin[0x27] << 8) | (bin[0x28] << 16) | (bin[0x29] << 24);
+  let stripNo = (sizeInfo >> 1) & 0x0f;
+  let stripCount = (sizeInfo >> 5) & 0x0f;
+  if (stripNo < 1 || stripCount < 1) {
+    stripNo = 1;
+    stripCount = 1;
+  }
+  const vpkSize = bin.length >= VPK_START ? (bin[0x51] | (bin[0x52] << 8)) : 0;
+  return { stripNo, stripCount, vpkSize };
 }
 
-const NINTENDO = new TextEncoder().encode('NINTENDO');
+export function analyzeStripSet(bins) {
+  if (!bins.length) {
+    return { ok: false, error: 'No strips to combine.' };
+  }
+  const infos = bins.map((bin, index) => ({ ...readStripInfo(bin), index, bin }));
+  const stripCount = infos[0].stripCount;
+  for (const info of infos) {
+    if (info.stripCount !== stripCount) {
+      return { ok: false, error: 'These files are from different cards (strip counts do not match).' };
+    }
+  }
+  const byNo = new Map();
+  for (const info of infos) {
+    if (byNo.has(info.stripNo)) {
+      return { ok: false, error: `Duplicate strip ${info.stripNo} of ${stripCount}.` };
+    }
+    byNo.set(info.stripNo, info);
+  }
+  const present = [...byNo.keys()].sort((a, b) => a - b);
+  const missing = [];
+  for (let n = 1; n <= stripCount; n++) {
+    if (!byNo.has(n)) missing.push(n);
+  }
+  return {
+    ok: true,
+    complete: missing.length === 0,
+    stripCount,
+    present,
+    missing,
+    ordered: present.map((n) => byNo.get(n)),
+  };
+}
+
+export function combineDecodedStripBins(bins) {
+  const analysis = analyzeStripSet(bins);
+  if (!analysis.ok) throw new Error(analysis.error);
+  if (!analysis.complete) {
+    return { bin: null, ...analysis };
+  }
+
+  const ordered = analysis.ordered.map((strip) => strip.bin);
+  if (ordered.length === 1) {
+    return { bin: ordered[0], ...analysis };
+  }
+
+  const first = ordered[0];
+  if (first.length < VPK_START) {
+    throw new Error('First strip is too short to combine');
+  }
+  const vpkSize = first[0x51] | (first[0x52] << 8);
+  const header = first.subarray(0, VPK_START);
+  const chunks = [first.subarray(VPK_START)];
+  for (let i = 1; i < ordered.length; i++) {
+    if (ordered[i].length <= STRIP2_BIN_OFFSET) {
+      throw new Error(`Strip ${i + 1} is too short to combine`);
+    }
+    chunks.push(ordered[i].subarray(STRIP2_BIN_OFFSET));
+  }
+
+  let vpkLen = 0;
+  for (const chunk of chunks) vpkLen += chunk.length;
+  const vpk = new Uint8Array(vpkLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    vpk.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  const take = vpkSize > 0 && vpkSize <= vpk.length ? vpkSize : vpk.length;
+  const out = new Uint8Array(header.length + take);
+  out.set(header, 0);
+  out.set(vpk.subarray(0, take), header.length);
+  return { bin: out, ...analysis };
+}
+
 const LONG_RAW = 0xb60;
 const SHORT_RAW = 0x750;
 const LONG_BIN = 0x840;
@@ -433,10 +518,14 @@ export function decodeRawToBin(bytes) {
   }
 
   const bins = strips.map((strip) => strip.bin);
+  const combined = combineDecodedStripBins(bins);
 
   return {
-    bin: bins.length > 1 ? combineBinStrips(bins) : bins[0],
+    bin: combined.bin ?? bins[0],
     stripCount: strips.length,
+    expectedStripCount: combined.stripCount ?? strips.length,
+    complete: combined.complete ?? strips.length === 1,
+    missing: combined.missing ?? [],
     strips,
   };
 }

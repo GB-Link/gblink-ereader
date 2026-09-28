@@ -1,4 +1,10 @@
-import { decodeRawToBin, looksLikeRaw } from './raw-decode.js';
+import {
+  analyzeStripSet,
+  combineDecodedStripBins,
+  decodeRawToBin,
+  looksLikeRaw,
+  readStripInfo,
+} from './raw-decode.js';
 import { classifyUpload, parseUploadFilename } from './upload.js';
 
 const NINTENDO = new TextEncoder().encode('NINTENDO');
@@ -216,46 +222,153 @@ function withUploadMeta(result, filename) {
   };
 }
 
+function isStripDataComplete(bin, info) {
+  if (info.stripCount <= 1) return true;
+  if (info.stripNo !== 1) return false;
+  return info.vpkSize > 0 && bin.length >= 0x53 + info.vpkSize;
+}
+
+function withStripMeta(result) {
+  const info = readStripInfo(result.bin);
+  const complete = result.complete ?? isStripDataComplete(result.bin, info);
+  return {
+    ...result,
+    stripNo: info.stripNo,
+    stripCount: info.stripCount,
+    complete,
+    missing: result.missing ?? (complete ? [] : missingStripNumbers(info.stripCount, [info.stripNo])),
+  };
+}
+
+function missingStripNumbers(stripCount, present) {
+  const have = new Set(present);
+  const missing = [];
+  for (let n = 1; n <= stripCount; n++) {
+    if (!have.has(n)) missing.push(n);
+  }
+  return missing;
+}
+
 export function loadEreaderCard(bytes, filename = '') {
   const ext = extensionOf(filename);
 
   if (ext === '.raw' || ext === '.dc' || looksLikeRaw(bytes)) {
     try {
-      const { bin, stripCount } = decodeRawToBin(bytes);
-      return withUploadMeta({
-        bin, format: 'raw', label: 'Dotcode .raw',
-        detail: stripCount > 1 ? `${stripCount} strips combined` : undefined,
-      }, filename);
+      const decoded = decodeRawToBin(bytes);
+      return withUploadMeta(withStripMeta({
+        bin: decoded.bin,
+        format: 'raw',
+        label: 'Dotcode .raw',
+        detail: decoded.complete && decoded.stripCount > 1
+          ? `${decoded.expectedStripCount} strips combined`
+          : undefined,
+        complete: decoded.complete,
+        missing: decoded.missing,
+      }), filename);
     } catch {
     }
   }
 
   if (looksLikeSma4Save(bytes)) {
     const { bin, detail } = extractCardFromSma4Save(bytes);
-    return withUploadMeta({ bin, format: 'sav', label: 'SMA4 save', detail }, filename);
+    return withUploadMeta(withStripMeta({ bin, format: 'sav', label: 'SMA4 save', detail }), filename);
   }
 
   if (ext === '.sav' || looksLikeSav(bytes)) {
     const { bin, title, compressed } = extractCardFromSav(bytes);
-    return withUploadMeta({
+    return withUploadMeta(withStripMeta({
       bin, format: 'sav', label: 'e-Reader save',
       detail: `${title}${compressed ? ' (vpk0)' : ''}`,
-    }, filename);
+    }), filename);
   }
 
-if (looksLikeBin(bytes) || ext === '.bin' || bytes.length > 0) {
-    return withUploadMeta({ bin: bytes.slice(), format: 'bin', label: 'Decoded .bin' }, filename);
+  if (looksLikeBin(bytes) || ext === '.bin' || bytes.length > 0) {
+    return withUploadMeta(withStripMeta({
+      bin: bytes.slice(), format: 'bin', label: 'Decoded .bin',
+    }), filename);
   }
 
   throw new Error('Unrecognized card file. Use .bin, .raw, or .sav from nedcenc / card archives.');
 }
 
-export async function loadEreaderCardUploads(files) {
-  const list = [...files].filter(Boolean);
+export function assembleCardUploads(parts) {
+  const list = parts.filter(Boolean);
   if (list.length === 0) throw new Error('No file selected');
-  const file = list[0];
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  return loadEreaderCard(bytes, file.name);
+
+  const completeCards = list.filter((part) => part.complete && (part.stripCount ?? 1) <= 1);
+  const combinedCards = list.filter((part) => part.complete && (part.stripCount ?? 1) > 1);
+  const incompleteParts = list.filter((part) => !part.complete && (part.stripCount ?? 1) > 1);
+
+  if (combinedCards.length === 1 && list.length === 1) {
+    return { incomplete: false, ...combinedCards[0] };
+  }
+  if (completeCards.length === 1 && list.length === 1) {
+    return { incomplete: false, ...completeCards[0] };
+  }
+  if (combinedCards.length && list.length > 1) {
+    throw new Error('Drop one complete card, or the matching strips of a single two-strip card.');
+  }
+  if (completeCards.length > 1 && incompleteParts.length === 0) {
+    throw new Error('These files look like two different cards. Upload one card at a time.');
+  }
+  if (completeCards.length && incompleteParts.length) {
+    throw new Error('Mix of a complete card and extra strips. Clear and upload one card.');
+  }
+
+  const stripParts = incompleteParts.length ? incompleteParts : list;
+  const bins = stripParts.map((part) => part.bin);
+  const analysis = analyzeStripSet(bins);
+  if (!analysis.ok) throw new Error(analysis.error);
+
+  const presentParts = analysis.ordered.map((info) => ({
+    ...stripParts[info.index],
+    stripNo: info.stripNo,
+    stripCount: info.stripCount,
+  }));
+
+  if (!analysis.complete) {
+    return {
+      incomplete: true,
+      stripCount: analysis.stripCount,
+      present: analysis.present,
+      missing: analysis.missing,
+      parts: presentParts,
+    };
+  }
+
+  const combined = combineDecodedStripBins(bins);
+  const first = presentParts[0];
+  const names = presentParts.map((part) => part.filename || part.upload?.basename).filter(Boolean);
+  return {
+    incomplete: false,
+    ...withUploadMeta({
+      bin: combined.bin,
+      format: first.format,
+      label: first.label,
+      detail: `${analysis.stripCount} strips combined`,
+      complete: true,
+      missing: [],
+      stripNo: 1,
+      stripCount: analysis.stripCount,
+    filenames: names,
+    parts: presentParts,
+  }, first.filename || first.upload?.basename || ''),
+  };
+}
+
+export async function loadEreaderCardUploads(files, { existing = [] } = {}) {
+  const list = [...files].filter(Boolean);
+  if (list.length === 0 && existing.length === 0) throw new Error('No file selected');
+
+  const loaded = [];
+  for (const file of list) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    loaded.push({
+      filename: file.name,
+      ...loadEreaderCard(bytes, file.name),
+    });
+  }
+  return assembleCardUploads([...existing, ...loaded]);
 }
 
 export function formatAcceptAttribute() {

@@ -44,6 +44,8 @@ export const EREADER_PROFILE = {
   SMA4_EUR_GER: 7,
   SMA4_EUR_ESP: 8,
   SMA4_EUR_ITA: 9,
+  POKEMON_EMERALD: 10,
+  POKEMON_EMERALD_JPN: 11,
 };
 
 export function isSma4EreaderProfile(profile) {

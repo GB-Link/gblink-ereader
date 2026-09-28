@@ -42,14 +42,32 @@ function describePayload(payload) {
 
 function extractPayload(cardBytes) {
   const { payload, source } = parsePokemonMysteryEventCard(cardBytes);
-  return { payload, source };
+  return { payload: widenMysteryEventCompatibility(payload), source };
 }
 
 const MIN_MYSTERY_PAYLOAD = 512;
 
+function widenMysteryEventCompatibility(payload) {
+  if (payload.length < 17 || payload[0] !== 0x01) return payload;
+  const out = payload.slice();
+  out[5] = 0xff;
+  out[6] = 0xff;
+  out[7] = 0xff;
+  out[8] = 0xff;
+  out[9] = 0xff;
+  out[10] = 0xff;
+  out[13] = 0xff;
+  out[14] = 0xff;
+  out[15] = 0xff;
+  out[16] = 0xff;
+  return out;
+}
+
 function padPayload(payload) {
-  if (payload.length >= MIN_MYSTERY_PAYLOAD) return payload;
-  const padded = new Uint8Array(MIN_MYSTERY_PAYLOAD);
+  const aligned = (payload.length + 3) & ~3;
+  const size = Math.max(MIN_MYSTERY_PAYLOAD, aligned);
+  if (payload.length === size) return payload;
+  const padded = new Uint8Array(size);
   padded.set(payload);
   return padded;
 }
@@ -104,6 +122,14 @@ export const POKEMON_START_GUIDE_USA = {
       label: 'Ruby / Sapphire DLC cards',
       href: 'https://github.com/notblisy/RUBYSAPPHIREDLC',
     },
+    {
+      label: 'Youpileouf E-Reader cards (French)',
+      href: 'https://github.com/Youpileouf/Pokemon-e-Cards-France',
+    },
+    {
+      label: 'Youpileouf E-Reader cards (Spanish)',
+      href: 'https://github.com/Youpileouf/Pokemon-e-Cards-Spanish',
+    },
   ],
 };
 
@@ -124,6 +150,76 @@ export const POKEMON_START_GUIDE_JPN = {
   ],
 };
 
+const EMERALD_USEFUL_LINKS = [
+  {
+    label: 'notblisy Emerald E-Reader Cards',
+    href: 'https://github.com/notblisy/RUBYSAPPHIREDLC/tree/main/E-READER%20CARDS/EMERALD',
+  },
+  {
+    label: 'Youpileouf E-Reader cards (English)',
+    href: 'https://github.com/Youpileouf/Pokemon-e-Cards-English',
+  },
+  {
+    label: 'Youpileouf E-Reader cards (French)',
+    href: 'https://github.com/Youpileouf/Pokemon-e-Cards-France',
+  },
+  {
+    label: 'Youpileouf E-Reader cards (Spanish)',
+    href: 'https://github.com/Youpileouf/Pokemon-e-Cards-Spanish',
+  },
+];
+
+export const POKEMON_START_GUIDE_EMERALD_USA = {
+  sections: [
+    {
+      title: 'Unlock Mystery Gift',
+      note: 'One-time setup: after beating Norman, talk to the NPC by the PC in Petalburg City’s Pokémon Center and enter <strong>LINK TOGETHER WITH ALL</strong>. Save, restart, and <strong>Mystery Gift</strong> appears on the title menu.',
+    },
+    {
+      title: 'E-Reader Unlock',
+      steps: [
+        'Pokémon Emerald cannot scan e-Reader cards until it has the notblisy Wonder Card.',
+        'Send that card with <a href="https://wondercard.gblink.io/?event=blisy-mystery-event" target="_blank" rel="noopener noreferrer">GB-Link Wonder Cards</a>.',
+        '<strong>Disconnect the adapter</strong>, then come back here to scan e-Reader cards.',
+      ],
+    },
+    {
+      title: 'Send a card',
+      steps: [
+        '<strong>Connect the Game Boy.</strong> Drop or browse for an e-Reader card file in the box below before you connect.',
+        'Go to the <strong>2nd floor of any Pokémon Center</strong> and talk to the <strong>delivery man</strong>. This starts the e-Reader scan.',
+      ],
+    },
+  ],
+  links: EMERALD_USEFUL_LINKS,
+};
+
+export const POKEMON_START_GUIDE_EMERALD_JPN = {
+  sections: [
+    {
+      title: 'Unlock ふしぎなおくりもの',
+      note: 'One-time setup: after beating Norman (センリ), talk to the NPC by the PC in Petalburg City’s (トウカシティ) Pokémon Center and enter <strong>みんなの　ゆめを　つなげる</strong>. Save, restart, and <strong>ふしぎなおくりもの</strong> appears on the title menu.',
+    },
+    {
+      title: 'Send a card',
+      steps: [
+        '<strong>Drop or browse for an e-Reader card file in the box below first.</strong>',
+        'Connect the adapter, then open <strong>ふしぎなおくりもの</strong> on the GBA.',
+        'Press <strong>A</strong> on the GBA when prompted to load the event.',
+      ],
+    },
+  ],
+  links: EMERALD_USEFUL_LINKS,
+};
+
+function pokemonConnectedInstruction(menuName) {
+  return (
+    `Connect the adapter BEFORE opening ${menuName} on the GBA (with the cable setting `
+    + `on auto-detect, the ${menuName} screen interferes with detection at connect). `
+    + `Then: Send card → ${menuName} → A on GBA.`
+  );
+}
+
 export function makePokemonGame({
   id,
   label,
@@ -132,6 +228,8 @@ export function makePokemonGame({
   ereaderProfile,
   cableOverride = 0,
   startGuide = POKEMON_START_GUIDE_USA,
+  mysteryMenu = 'Mystery Event',
+  connectedInstruction,
 }) {
   return {
     id,
@@ -143,10 +241,7 @@ export function makePokemonGame({
     cardHint:
       cardHint ??
       `${FORMAT_HINTS.bin}, ${FORMAT_HINTS.raw}, ${FORMAT_HINTS.mev}`,
-    connectedInstruction:
-      'Connect the adapter BEFORE opening Mystery Event on the GBA (with the cable setting '
-      + 'on auto-detect, the Mystery Event screen interferes with detection at connect). '
-      + 'Then: Send card → Mystery Event → A on GBA. Needs firmware v2.2.2+.',
+    connectedInstruction: connectedInstruction ?? pokemonConnectedInstruction(mysteryMenu),
     getCardPayloadOffset,
     classifyCard(bytes) {
       try {

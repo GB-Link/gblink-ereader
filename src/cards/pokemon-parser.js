@@ -101,6 +101,11 @@ const END_OF_CHUNKS = 0x02;
 
 const CHUNK_LENGTHS = [0, 0, 0, 6, 2, 5, 12, 5, 3, 1, 2, 5, 5, 5, 1, 13, 13];
 
+function isMysteryEventLanguage(byte) {
+  // Official cards use 1–7. Custom dumps often use 0xFF as “any language”.
+  return (byte >= 0x01 && byte <= 0x07) || byte === 0xFF;
+}
+
 export function looksLikeMysteryEvent(bytes, offset = 0) {
   return (
     bytes.length >= offset + 17 &&
@@ -109,14 +114,15 @@ export function looksLikeMysteryEvent(bytes, offset = 0) {
     bytes[offset + 2] === 0x00 &&
     bytes[offset + 3] === 0x00 &&
     bytes[offset + 4] === 0x02 &&
-    bytes[offset + 5] >= 0x01 &&
-    bytes[offset + 5] <= 0x07 &&
+    isMysteryEventLanguage(bytes[offset + 5]) &&
     bytes[offset + 6] === 0x00 &&
     bytes[offset + 7] === bytes[offset + 5] &&
     bytes[offset + 11] === 0x04 &&
     bytes[offset + 12] === 0x00 &&
     bytes[offset + 13] === 0x80 &&
-    bytes[offset + 14] === 0x01 &&
+    // Gen 3 version id: 1 Sapphire, 2 Ruby, 3 Emerald, 4 FireRed, 5 LeafGreen
+    bytes[offset + 14] >= 0x01 &&
+    bytes[offset + 14] <= 0x05 &&
     bytes[offset + 15] === 0x00
   );
 }
@@ -185,16 +191,39 @@ function mysteryEventLength(dec, start) {
   return end - start;
 }
 
+const MAX_MYSTERY_UPLOAD = 8192;
+
+function sliceMysteryEvent(bytes, start) {
+  if (bytes.length - start <= MAX_MYSTERY_UPLOAD) return bytes.subarray(start);
+
+  let end = start + mysteryEventLength(bytes, start);
+  while (end < bytes.length) {
+    let next = end;
+    const windowEnd = Math.min(bytes.length, end + 16);
+    while (next < windowEnd && !looksLikeMysteryEvent(bytes, next)) next++;
+    if (next >= windowEnd || !looksLikeMysteryEvent(bytes, next)) break;
+    let size;
+    try {
+      size = mysteryEventLength(bytes, next);
+    } catch {
+      break;
+    }
+    if (next + size - start > MAX_MYSTERY_UPLOAD) break;
+    end = next + size;
+  }
+  return bytes.subarray(start, end);
+}
+
 function extractMysteryEventFromDecompressed(dec) {
   const start = findMysteryEventStart(dec);
-  const size = mysteryEventLength(dec, start);
-  return dec.subarray(start, start + size);
+  mysteryEventLength(dec, start);
+  return sliceMysteryEvent(dec, start);
 }
 
 function extractMysteryEventBlob(bytes) {
   if (looksLikeMysteryEvent(bytes, 0)) {
-    const size = mysteryEventLength(bytes, 0);
-    return bytes.subarray(0, size);
+    mysteryEventLength(bytes, 0);
+    return sliceMysteryEvent(bytes, 0);
   }
   return extractMysteryEventFromDecompressed(bytes);
 }

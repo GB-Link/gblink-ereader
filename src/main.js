@@ -11,7 +11,7 @@ import {
 } from './link/gblink.js';
 import { formatErdrWireMessage, setFirmwareWireLog, isSma4EreaderProfile } from './link/ereader-mode.js';
 import { GAMES, getGame } from './games/index.js';
-import { loadEreaderCardUploads, formatAcceptAttribute, SUPPORTED_EXTENSIONS } from './cards/loader.js';
+import { loadEreaderCardUploads, assembleCardUploads, formatAcceptAttribute } from './cards/loader.js';
 import { detectCardGames, validateCardForGame } from './cards/detect.js';
 import { formatUploadLabel } from './cards/upload.js';
 import './launcher-return.js';
@@ -20,9 +20,15 @@ const gameSelect = document.getElementById('game-select');
 const gameGuide = document.getElementById('game-guide');
 const gameGuideBody = document.getElementById('game-guide-body');
 const dropZone = document.getElementById('drop-zone');
+const dropZoneLabel = document.getElementById('drop-zone-label');
+const dropZoneSub = document.getElementById('drop-zone-sub');
 const cardFile = document.getElementById('card-file');
 const cardInfo = document.getElementById('card-info');
 const cardFormatsEl = document.getElementById('card-formats');
+const stripSet = document.getElementById('strip-set');
+const stripSetTitle = document.getElementById('strip-set-title');
+const stripSetList = document.getElementById('strip-set-list');
+const stripSetClear = document.getElementById('strip-set-clear');
 const statusText = document.getElementById('status-text');
 const detailText = document.getElementById('detail-text');
 const statusIndicator = document.getElementById('status-indicator');
@@ -40,6 +46,8 @@ const copyLogBtn = document.getElementById('copy-log-btn');
 
 let cardBytes = null;
 let cardMeta = null;
+let pendingStrips = [];
+let loadedParts = [];
 let busy = false;
 let selectedGameId = GAMES[0]?.id ?? '';
 let userSelectedGame = false;
@@ -61,6 +69,12 @@ const PHASE_CONFIG = {
     step: 1,
     message: 'Card loaded',
     instruction: 'Click Connect Game Boy.',
+    type: 'idle',
+  },
+  card_partial: {
+    step: 1,
+    message: 'Need the other strip',
+    instruction: 'This card uses two strips. Add the remaining file — order does not matter.',
     type: 'idle',
   },
   connecting: {
@@ -343,8 +357,81 @@ function hideCardDisplay() {
   cardInfo.classList.remove('hidden');
 }
 
+function resetDropZoneCopy() {
+  dropZone?.classList.remove('awaiting-strip');
+  if (dropZoneLabel) dropZoneLabel.textContent = 'Drop e-Reader card file here';
+  if (dropZoneSub) dropZoneSub.textContent = 'or both strips of a two-strip card — order does not matter';
+}
+
+function hideStripSet() {
+  stripSet?.classList.add('hidden');
+  if (stripSetList) stripSetList.replaceChildren();
+}
+
+function renderStripSet(parts, { stripCount, missing } = {}) {
+  if (!stripSet || !stripSetList) return;
+  const expected = stripCount ?? parts[0]?.stripCount ?? parts.length;
+  const missingList = missing ?? [];
+  stripSetTitle.textContent = missingList.length
+    ? `${parts.length} of ${expected} strips`
+    : `${expected} strips combined`;
+  stripSetList.replaceChildren();
+  for (const part of parts) {
+    const item = document.createElement('li');
+    item.className = 'strip-set-item';
+    const name = document.createElement('span');
+    name.className = 'strip-set-item-name';
+    const fileLabel = part.filename || part.upload?.basename || 'Strip';
+    name.textContent = `Strip ${part.stripNo} of ${part.stripCount} — ${fileLabel}`;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'strip-set-item-remove';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      const remaining = loadedParts.filter((p) => p !== part);
+      void applyStripParts(remaining);
+    });
+    item.appendChild(name);
+    item.appendChild(remove);
+    stripSetList.appendChild(item);
+  }
+  stripSet.classList.remove('hidden');
+}
+
+function showPartialStrips(result) {
+  pendingStrips = result.parts;
+  loadedParts = result.parts;
+  cardBytes = null;
+  cardMeta = null;
+  clearAdapterCardCache();
+  hideCardDisplay();
+  const missingText = result.missing.length === 1
+    ? `strip ${result.missing[0]}`
+    : `strips ${result.missing.join(', ')}`;
+  cardInfo.textContent = `Need ${missingText} of this ${result.stripCount}-strip card.`;
+  renderStripSet(result.parts, { stripCount: result.stripCount, missing: result.missing });
+  dropZone?.classList.add('awaiting-strip');
+  if (dropZoneLabel) dropZoneLabel.textContent = 'Add the other strip';
+  if (dropZoneSub) {
+    dropZoneSub.textContent = `Loaded strip ${result.present.join(' and ')} of ${result.stripCount} — order does not matter`;
+  }
+  setPhase(isConnected() ? 'connected' : 'card_partial');
+}
+
+function clearCardState() {
+  pendingStrips = [];
+  loadedParts = [];
+  cardBytes = null;
+  cardMeta = null;
+  clearAdapterCardCache();
+  hideStripSet();
+  resetDropZoneCopy();
+  updateCardInfoPlaceholder();
+  setPhase(isConnected() ? 'connected' : 'idle');
+}
+
 function updateCardInfoPlaceholder() {
-  if (cardBytes) return;
+  if (cardBytes || pendingStrips.length) return;
   cardInfo.textContent = 'No card loaded.';
   hideCardDisplay();
 }
@@ -384,7 +471,11 @@ function setPhase(phase, detail = '') {
   const cfg = { ...(PHASE_CONFIG[phase] ?? PHASE_CONFIG.idle) };
 
   if (phase === 'connected') {
-    cfg.instruction = cardBytes ? connectedInstruction() : 'Select an e-Reader card to send before starting your game.';
+    cfg.instruction = cardBytes
+      ? connectedInstruction()
+      : pendingStrips.length
+        ? 'Add the remaining strip before starting your game.'
+        : 'Select an e-Reader card to send before starting your game.';
   }
 
   statusText.textContent = cfg.message;
@@ -487,6 +578,8 @@ gameSelect.addEventListener('change', () => {
     } else {
       setPhase(isConnected() ? 'connected' : 'card_loaded');
     }
+  } else if (pendingStrips.length) {
+    setPhase(isConnected() ? 'connected' : 'card_partial');
   } else {
     updateCardInfoPlaceholder();
     setPhase('idle');
@@ -518,95 +611,145 @@ dropZone?.addEventListener('dragleave', (e) => {
 dropZone?.addEventListener('drop', (e) => {
   e.preventDefault();
   dropZone.classList.remove('drag-over');
-  const dt = e.dataTransfer;
-  if (dt?.files?.length) {
-    const input = cardFile;
-    const transfer = new DataTransfer();
-    for (const f of dt.files) transfer.items.add(f);
-    input.files = transfer.files;
-    input.dispatchEvent(new Event('change'));
-  }
+  const files = e.dataTransfer?.files;
+  if (files?.length) void handleCardFiles(files, { append: pendingStrips.length > 0 });
 });
 
 dropZone?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); cardFile.click(); }
 });
 
-cardFile.addEventListener('change', async () => {
-  const files = cardFile.files ? [...cardFile.files] : [];
-  if (!files.length) {
-    cardBytes = null;
-    cardMeta = null;
-    clearAdapterCardCache();
-    updateCardInfoPlaceholder();
-    setPhase('idle');
+cardFile.addEventListener('change', () => {
+  const files = cardFile.files;
+  if (!files?.length) return;
+  void handleCardFiles(files, { append: pendingStrips.length > 0 });
+  cardFile.value = '';
+});
+
+stripSetClear?.addEventListener('click', () => {
+  clearCardState();
+  refreshButtons();
+});
+
+async function applyStripParts(parts) {
+  if (!parts.length) {
+    clearCardState();
     refreshButtons();
     return;
   }
-
   try {
-    const loaded = await loadEreaderCardUploads(files);
-    cardBytes = loaded.bin;
-    cardMeta = loaded;
-
-    const detection = detectCardGames(cardBytes, {
-      filename: loaded.upload?.basename ?? files[0].name,
-      format: loaded.format,
-    });
-    cardMeta.detection = detection;
-
-    if (detection.primary && !userSelectedGame) {
-      selectGame(detection.primary);
-    }
-
-    const game = selectedGame();
-    const mismatch =
-      detection.supported && !detection.ambiguous && game
-        ? validateLoadedCard(cardBytes, game.id)
-        : null;
-    const detail = loaded.detail ? ` — ${loaded.detail}` : '';
-    const detectLine = describeDetection(detection);
-    const displayName = loaded.upload ? formatUploadLabel(loaded.upload) : files[0].name;
-    if (!detection.supported) {
-      hideCardDisplay();
-      cardInfo.textContent = `${displayName} — ${detectLine}`;
-      log(`Unsupported upload: ${detectLine}`);
-      setPhase('error', detectLine);
-    } else if (detection.ambiguous) {
-      hideCardDisplay();
-      cardInfo.textContent = `${displayName} — Unknown card type. Select a game above to try sending.`;
-      log(`Loaded ${files.map((f) => f.name).join(' + ')} (${loaded.format}) — card type unknown`);
-      clearAdapterCardCache();
-      setPhase(isConnected() ? 'connected' : 'card_loaded');
-    } else if (mismatch) {
-      hideCardDisplay();
-      cardInfo.textContent = `${displayName} — Does not match ${game?.label}: ${mismatch}`;
-      log(`Card load warning: ${mismatch}`);
-      setPhase('error', mismatch);
-    } else {
-      const cardClassification = (() => {
-        try { return game?.classifyCard?.(cardBytes); } catch { return null; }
-      })();
-      showCardDisplay(loaded.upload, cardClassification, loaded.classification, loaded.format === 'sav' ? loaded.detail : null);
-      log(`Loaded ${files.map((f) => f.name).join(' + ')} (${loaded.format})` + (detectLine ? ` — ${detectLine}` : ''));
-      clearAdapterCardCache();
-      if (isConnected()) {
-        await preloadCardToAdapter();
-        await startScan();
-      } else {
-        setPhase('card_loaded');
-      }
-    }
+    await applyLoadedResult(assembleCardUploads(parts), parts.map((p) => p.filename).filter(Boolean));
   } catch (err) {
-    cardBytes = null;
-    cardMeta = null;
     hideCardDisplay();
     cardInfo.textContent = err.message;
     log(`Card load failed: ${err.message}`);
     setPhase('error', err.message);
   }
   refreshButtons();
-});
+}
+
+async function handleCardFiles(files, { append = false } = {}) {
+  const list = [...files].filter(Boolean);
+  if (!list.length) return;
+
+  try {
+    const existing = append ? pendingStrips : [];
+    const loaded = await loadEreaderCardUploads(list, { existing });
+    await applyLoadedResult(loaded, list.map((f) => f.name));
+  } catch (err) {
+    if (!append) {
+      pendingStrips = [];
+      loadedParts = [];
+      cardBytes = null;
+      cardMeta = null;
+      hideStripSet();
+      resetDropZoneCopy();
+    }
+    hideCardDisplay();
+    cardInfo.textContent = err.message;
+    log(`Card load failed: ${err.message}`);
+    setPhase('error', err.message);
+  }
+  refreshButtons();
+}
+
+async function applyLoadedResult(loaded, fileNames = []) {
+  if (loaded.incomplete) {
+    showPartialStrips(loaded);
+    log(`Loaded strip ${loaded.present.join(' and ')} of ${loaded.stripCount} — waiting for ${loaded.missing.join(', ')}`);
+    return;
+  }
+
+  pendingStrips = [];
+  loadedParts = loaded.parts ?? [];
+  cardBytes = loaded.bin;
+  cardMeta = loaded;
+
+  const names = loaded.filenames?.length ? loaded.filenames : fileNames;
+  const detection = detectCardGames(cardBytes, {
+    filename: loaded.upload?.basename ?? names[0] ?? '',
+    format: loaded.format,
+  });
+  cardMeta.detection = detection;
+
+  if (detection.primary && !userSelectedGame) {
+    selectGame(detection.primary);
+  }
+
+  const game = selectedGame();
+  const mismatch =
+    detection.supported && !detection.ambiguous && game
+      ? validateLoadedCard(cardBytes, game.id)
+      : null;
+  const detectLine = describeDetection(detection);
+  const displayName = loaded.upload ? formatUploadLabel(loaded.upload) : (names[0] ?? 'Card');
+
+  if ((loaded.stripCount ?? 1) > 1 && loaded.parts?.length) {
+    renderStripSet(loaded.parts, { stripCount: loaded.stripCount, missing: [] });
+    resetDropZoneCopy();
+  } else {
+    hideStripSet();
+    resetDropZoneCopy();
+  }
+
+  if (!detection.supported) {
+    hideCardDisplay();
+    cardInfo.textContent = `${displayName} — ${detectLine}`;
+    log(`Unsupported upload: ${detectLine}`);
+    setPhase('error', detectLine);
+  } else if (detection.ambiguous) {
+    hideCardDisplay();
+    cardInfo.textContent = `${displayName} — Unknown card type. Select a game above to try sending.`;
+    log(`Loaded ${names.join(' + ')} (${loaded.format}) — card type unknown`);
+    clearAdapterCardCache();
+    setPhase(isConnected() ? 'connected' : 'card_loaded');
+  } else if (mismatch) {
+    hideCardDisplay();
+    cardInfo.textContent = `${displayName} — Does not match ${game?.label}: ${mismatch}`;
+    log(`Card load warning: ${mismatch}`);
+    setPhase('error', mismatch);
+  } else {
+    const cardClassification = (() => {
+      try { return game?.classifyCard?.(cardBytes); } catch { return null; }
+    })();
+    const savDetail = loaded.format === 'sav' ? loaded.detail : null;
+    showCardDisplay(loaded.upload, cardClassification, loaded.classification, savDetail);
+    if (loaded.detail && loaded.format !== 'sav') {
+      const extra = loaded.detail;
+      if (cardDisplaySub.textContent) cardDisplaySub.textContent += ` · ${extra}`;
+      else cardDisplaySub.textContent = extra;
+      cardDisplaySub.classList.toggle('hidden', !cardDisplaySub.textContent);
+    }
+    log(`Loaded ${names.join(' + ')} (${loaded.format})` + (detectLine ? ` — ${detectLine}` : ''));
+    clearAdapterCardCache();
+    if (isConnected()) {
+      await preloadCardToAdapter();
+      await startScan();
+    } else {
+      setPhase('card_loaded');
+    }
+  }
+}
 
 connectBtn.addEventListener('click', async () => {
   busy = true;
@@ -658,7 +801,7 @@ disconnectBtn.addEventListener('click', async () => {
   try {
     await disconnect();
     log('Disconnected');
-    setPhase(cardBytes ? 'card_loaded' : 'idle');
+    setPhase(cardBytes ? 'card_loaded' : pendingStrips.length ? 'card_partial' : 'idle');
   } catch (err) {
     log(`Disconnect failed: ${err.message}`);
     setPhase('error', err.message);

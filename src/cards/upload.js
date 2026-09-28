@@ -145,6 +145,16 @@ export function classifyUpload(upload) {
     };
   }
 
+  if (family.includes('pokemon emerald') || title.includes('emerald')) {
+    return {
+      kind: 'pokemon-mystery',
+      category: 'gba-link',
+      supported: true,
+      gameIds: ['pokemon-emerald'],
+      label: 'Pokemon Emerald mystery gift',
+    };
+  }
+
   if (family === 'eon ticket' || title.includes('eon ticket')) {
     return {
       kind: 'pokemon-mystery',
