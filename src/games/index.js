@@ -13,6 +13,8 @@ import {
   POKEMON_START_GUIDE_USA,
   POKEMON_START_GUIDE_JPN,
   POKEMON_START_GUIDE_EMERALD_USA,
+  POKEMON_START_GUIDE_EMERALD_FRA,
+  POKEMON_START_GUIDE_EMERALD_GER,
 } from './pokemon.js';
 import { EREADER_PROFILE } from '../link/ereader-mode.js';
 
@@ -62,6 +64,28 @@ export const GAMES = [
     cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_EMERALD_USA,
     mysteryMenu: 'Mystery Gift',
+    connectedInstruction:
+      'On the GBA, go to the 2nd floor of any Pokémon Center and talk to the delivery man to start the e-Reader scan.',
+  }),
+  makePokemonGame({
+    id: 'pokemon-emerald-fra',
+    label: 'Pokemon Emerald (Émeraude/French)',
+    versionLabel: 'Émeraude/French',
+    ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD_FRA,
+    cableOverride: 0,
+    startGuide: POKEMON_START_GUIDE_EMERALD_FRA,
+    mysteryMenu: 'Cadeau Myst.',
+    connectedInstruction:
+      'On the GBA, go to the 2nd floor of any Pokémon Center and talk to the delivery man to start the e-Reader scan.',
+  }),
+  makePokemonGame({
+    id: 'pokemon-emerald-ger',
+    label: 'Pokemon Emerald (Smaragd/German)',
+    versionLabel: 'Smaragd/German',
+    ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD_GER,
+    cableOverride: 0,
+    startGuide: POKEMON_START_GUIDE_EMERALD_GER,
+    mysteryMenu: 'Geheimgeschehen',
     connectedInstruction:
       'On the GBA, go to the 2nd floor of any Pokémon Center and talk to the delivery man to start the e-Reader scan.',
   }),

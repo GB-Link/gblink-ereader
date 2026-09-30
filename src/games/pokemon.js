@@ -169,11 +169,12 @@ const EMERALD_USEFUL_LINKS = [
   },
 ];
 
-export const POKEMON_START_GUIDE_EMERALD_USA = {
-  sections: [
+function emeraldUnlockGuide(menuName, password, links = EMERALD_USEFUL_LINKS, unlockNote) {
+  return {
+    sections: [
     {
-      title: 'Unlock Mystery Gift',
-      note: 'One-time setup: after beating Norman, talk to the NPC by the PC in Petalburg City’s Pokémon Center and enter <strong>LINK TOGETHER WITH ALL</strong>. Save, restart, and <strong>Mystery Gift</strong> appears on the title menu.',
+      title: `Unlock ${menuName}`,
+      note: unlockNote ?? `One-time setup: after beating Norman, talk to the NPC by the PC in Petalburg City’s Pokémon Center and enter <strong>${password}</strong>. Save, restart, and <strong>${menuName}</strong> appears on the title menu.`,
     },
     {
       title: 'E-Reader Unlock',
@@ -191,8 +192,40 @@ export const POKEMON_START_GUIDE_EMERALD_USA = {
       ],
     },
   ],
-  links: EMERALD_USEFUL_LINKS,
-};
+  links,
+  };
+}
+
+export const POKEMON_START_GUIDE_EMERALD_USA = emeraldUnlockGuide(
+  'Mystery Gift',
+  'LINK TOGETHER WITH ALL',
+  EMERALD_USEFUL_LINKS,
+  'One-time setup: in any Poké Mart, fill in the questionnaire on the counter. Top left <strong>LINK</strong>, top right <strong>TOGETHER</strong>, lower left <strong>WITH</strong>, lower right <strong>ALL</strong>. Save, restart, and <strong>Mystery Gift</strong> appears on the title menu.',
+);
+
+export const POKEMON_START_GUIDE_EMERALD_FRA = emeraldUnlockGuide(
+  'Cadeau Myst.',
+  'CONNEXION AVEC LES DRESSEUR',
+  [
+    {
+      label: 'Youpileouf E-Reader cards (French)',
+      href: 'https://github.com/Youpileouf/Pokemon-e-Cards-France',
+    },
+  ],
+  'One-time setup: in any Poké Mart, fill in the questionnaire on the counter. Top left <strong>CONNEXION</strong>, top right <strong>AVEC</strong>, lower left <strong>LES</strong>, lower right <strong>DRESSEUR</strong>. Save, restart, and <strong>Cadeau Myst.</strong> appears on the title menu.',
+);
+
+export const POKEMON_START_GUIDE_EMERALD_GER = emeraldUnlockGuide(
+  'Geheimgeschehen',
+  'LINK MIT ALLE ZUSAMMEN',
+  [
+    {
+      label: 'Youpileouf E-Reader cards (German)',
+      href: 'https://github.com/Youpileouf/Pokemon-e-Cards-German',
+    },
+  ],
+  'One-time setup: in any Poké Mart, fill in the questionnaire on the counter. Top left <strong>LINK</strong>, top right <strong>MIT</strong>, lower left <strong>ALLE</strong>, lower right <strong>ZUSAMMEN</strong>. Save, restart, and <strong>Geheimgeschehen</strong> appears on the title menu.',
+);
 
 export const POKEMON_START_GUIDE_EMERALD_JPN = {
   sections: [

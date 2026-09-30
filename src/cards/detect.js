@@ -242,6 +242,8 @@ export function validateCardForGame(bin, gameId) {
     'pokemon-ruby-jpn': 'pokemon',
     'pokemon-emerald': 'pokemon',
     'pokemon-emerald-jpn': 'pokemon',
+    'pokemon-emerald-fra': 'pokemon',
+    'pokemon-emerald-ger': 'pokemon',
   }[gameId];
   if (game === 'sma4') {
     sma4GetCardPayloadOffset(bin);
