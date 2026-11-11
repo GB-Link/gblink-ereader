@@ -247,8 +247,7 @@ export const POKEMON_START_GUIDE_EMERALD_JPN = {
 
 function pokemonConnectedInstruction(menuName) {
   return (
-    `Connect the adapter BEFORE opening ${menuName} on the GBA (with the cable setting `
-    + `on auto-detect, the ${menuName} screen interferes with detection at connect). `
+    `Connect the adapter BEFORE opening ${menuName} on the GBA. `
     + `Then: Send card → ${menuName} → A on GBA.`
   );
 }
@@ -259,7 +258,6 @@ export function makePokemonGame({
   versionLabel,
   cardHint,
   ereaderProfile,
-  cableOverride = 0,
   startGuide = POKEMON_START_GUIDE_USA,
   mysteryMenu = 'Mystery Event',
   connectedInstruction,
@@ -269,7 +267,6 @@ export function makePokemonGame({
     label,
     linkMode: 'ereader',
     ereaderProfile,
-    cableOverride,
     startGuide,
     cardHint:
       cardHint ??

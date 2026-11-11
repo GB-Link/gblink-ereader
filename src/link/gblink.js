@@ -2,9 +2,10 @@ const USB_FILTERS = [
   { vendorId: 0x239a },
   { vendorId: 0xcafe },
   { vendorId: 0x2fe3 },
+  { vendorId: 0x1209, productId: 0xb011 }, // GB-Link firmware 3.0.0 and newer
 ];
 
-const SERIAL_FILTERS = [{ usbVendorId: 0x2fe3 }];
+const SERIAL_FILTERS = [{ usbVendorId: 0x2fe3 }, { usbVendorId: 0x1209, usbProductId: 0xb011 }];
 
 const VSWITCH_PREFIX = new Uint8Array([
   0xca, 0xfe, 0xca, 0xfe, 0xca, 0xfe, 0xca, 0xfe,
@@ -27,8 +28,6 @@ const GBL_CMD = {
   SET_VOLTAGE_3V3: 0x40,
   SET_VOLTAGE_5V: 0x41,
   GET_FIRMWARE_INFO: 0x0f,
-  SET_CABLE_OVERRIDE: 0x49,
-  GET_CABLE_TYPE: 0x4a,
 };
 
 const GBL_MODE = {
@@ -53,12 +52,6 @@ export const LINK_STATUS = {
   LINK_CLOSED: 0xff07,
   DEVICE_READY: 0xff08,
 };
-
-const FRAME_MS = 17;
-
-function delayFrames(frames = 1) {
-  return new Promise((resolve) => setTimeout(resolve, frames * FRAME_MS));
-}
 
 async function drainStaleDataPackets(conn) {
   if (conn.kind === 'serial') {
@@ -207,12 +200,6 @@ export function getLinkTransport() {
   return active?.transport ?? null;
 }
 
-export function cableTypeLabel(type) {
-  if (type === 0) return 'GBA cable path (SD→GP3)';
-  if (type === 1) return 'GBC 6-pin path (SD→GP4)';
-  return 'unknown';
-}
-
 function summarizeLinkSamples(samples, idle = 0x7fff) {
   const idleLike = new Set([idle & 0xffff, 0x7fff, 0, 0xffff]);
   const nonIdle = samples.filter((w) => !idleLike.has(w));
@@ -261,8 +248,6 @@ async function readCommandResponse(expectedCmd, timeoutMs = 800) {
 }
 
 // Firmware GetFirmwareInfo reply: [0x0F, major, minor, patch, landingPage].
-// The cable type is not part of this reply; it is filled in later from the
-// GET_CABLE_TYPE response.
 function parseFirmwarePacket(pkt) {
   if (!pkt || pkt[0] !== GBL_CMD.GET_FIRMWARE_INFO) return null;
   return {
@@ -270,17 +255,12 @@ function parseFirmwarePacket(pkt) {
     minor: pkt[2],
     patch: pkt[3],
     landingPage: pkt[4] === 1,
-    cable: null,
     version: `${pkt[1]}.${pkt[2]}.${pkt[3]}`,
   };
 }
 
 function firmwareSupportsNativeEreader(fw) {
-  if (!fw) return false;
-  if (fw.major > 2) return true;
-  if (fw.major < 2) return false;
-  if (fw.minor > 2) return true;
-  return fw.minor === 2 && fw.patch >= 2;
+  return Boolean(fw) && fw.major >= 3;
 }
 
 async function queryFirmwareInfo(conn) {
@@ -291,31 +271,6 @@ async function queryFirmwareInfo(conn) {
 
 export async function getFirmwareInfo() {
   return active?.firmwareInfo ?? null;
-}
-
-export async function setCableOverride(mode) {
-  if (!active || active.transport !== 'gblink') return null;
-  await sendControlCommand(active, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, mode]));
-  await delayFrames(3);
-  await drainStaleDataPackets(active);
-  const cable = await queryCableType();
-  const resolved = cable ?? (mode === 1 ? 0 : mode === 2 ? 1 : null);
-  if (active.firmwareInfo && resolved != null) active.firmwareInfo.cable = resolved;
-  active.cableOverride = mode;
-  return resolved;
-}
-// Report-only: the firmware samples the cable once at mode entry (a GBA
-// already on a link screen drives SO low, which would poison a re-sample).
-export async function queryCableType() {
-  if (!active || active.transport !== 'gblink') return null;
-  await drainStaleDataPackets(active);
-  await sendControlCommand(active, new Uint8Array([GBL_CMD.GET_CABLE_TYPE]));
-  const pkt = await readCommandResponse(GBL_CMD.GET_CABLE_TYPE, 1500);
-  if (!pkt) return null;
-  const cable = pkt[1];
-  active.detectedCable = cable;
-  if (active.firmwareInfo) active.firmwareInfo.cable = cable;
-  return cable;
 }
 
 function isLinkLostError(err) {
@@ -496,14 +451,13 @@ export function isConnected() {
 export async function connect({
   linkMode = 'ereader',
   ereaderProfile = 1,
-  cableOverride = 2,
   onProgress,
 } = {}) {
   if (navigator.usb) {
-    return connectUsb({ linkMode, ereaderProfile, cableOverride, onProgress });
+    return connectUsb({ linkMode, ereaderProfile, onProgress });
   }
   if (navigator.serial) {
-    return connectSerial({ linkMode, ereaderProfile, cableOverride, onProgress });
+    return connectSerial({ linkMode, ereaderProfile, onProgress });
   }
   throw new Error(
     'No supported adapter transport. Use Chrome or Edge (WebUSB) or Firefox 151+ (WebSerial).',
@@ -514,28 +468,13 @@ async function sendUsbCommand(conn, bytes) {
   await conn.device.transferOut(conn.cmdEpOut, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
 }
 
-async function applyCableOverride(conn, cableOverride, onProgress) {
-  if (cableOverride) {
-    const label = cableOverride === 2 ? 'GBC 6-pin (SD→GP4)' : 'GBA (SD→GP3)';
-    onProgress?.(`Choosing cable path: ${label}…`);
-    await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, cableOverride & 0xff]));
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  await sendControlCommand(conn, new Uint8Array([GBL_CMD.GET_CABLE_TYPE]));
-  const cablePkt = await readCommandResponse(GBL_CMD.GET_CABLE_TYPE, 3000);
-  const resolved = cablePkt?.[1] ?? null;
-  if (conn.firmwareInfo && resolved != null) conn.firmwareInfo.cable = resolved;
-  return resolved;
-}
-
-async function configureGen3LinkSlave(conn, { cableOverride = 2, onProgress } = {}) {
+async function configureGen3LinkSlave(conn, { onProgress } = {}) {
   onProgress?.('Resetting adapter session…');
   await sendControlCommand(conn, new Uint8Array([GBL_CMD.CANCEL]));
   await new Promise((r) => setTimeout(r, 300));
 
   conn.ereaderMode = false;
   conn.gen3LinkMode = true;
-  conn.cableOverride = cableOverride;
 
   onProgress?.('Starting GBA link mode…');
   conn.lastLinkStatus = null;
@@ -551,25 +490,17 @@ async function configureGen3LinkSlave(conn, { cableOverride = 2, onProgress } = 
   await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_VOLTAGE_3V3]));
   await new Promise((r) => setTimeout(r, 300));
 
-  if (cableOverride) {
-    await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, cableOverride]));
-  }
-  conn.cableOverride = cableOverride;
-
   await sendLinkCommand(conn, GBL_LINK_CMD.SET_MODE_SLAVE);
-  await applyCableOverride(conn, cableOverride, onProgress);
-  conn.firmwareInfo = (await queryFirmwareInfo(conn)) ?? conn.firmwareInfo;
   conn.gen3SlaveArmed = true;
   conn.gen3HandshakeArmed = false;
   conn.linkSessionReady = false;
 
-  const cableLabel = cableTypeLabel(conn.firmwareInfo?.cable);
   onProgress?.(
-    `Link listener ready (${cableLabel}) — open Mystery Event link standby, click Send card, then press OK on the GBA.`,
+    'Link listener ready — open Mystery Event link standby, click Send card, then press OK on the GBA.',
   );
 }
 
-async function configureGbaLinkSlave(conn, { ereaderProfile = 1, cableOverride = 2, onProgress } = {}) {
+async function configureGbaLinkSlave(conn, { ereaderProfile = 1, onProgress } = {}) {
   onProgress?.('Resetting adapter session…');
   await sendControlCommand(conn, new Uint8Array([GBL_CMD.CANCEL]));
   await new Promise((r) => setTimeout(r, 300));
@@ -577,7 +508,6 @@ async function configureGbaLinkSlave(conn, { ereaderProfile = 1, cableOverride =
   conn.ereaderMode = true;
   conn.gen3LinkMode = false;
   conn.ereaderProfile = ereaderProfile;
-  conn.cableOverride = cableOverride;
 
   onProgress?.('Starting e-Reader mode…');
   conn.lastLinkStatus = null;
@@ -594,7 +524,7 @@ async function configureGbaLinkSlave(conn, { ereaderProfile = 1, cableOverride =
   }
   if (!firmwareSupportsNativeEreader(fw)) {
     throw new Error(
-      `Adapter firmware ${fw.version} is too old. Please update to firmware v2.2.2 or later.`,
+      `Adapter firmware ${fw.version} is too old. Please update to firmware v3.0.0 or later.`,
     );
   }
   conn.firmwareInfo = fw;
@@ -604,7 +534,6 @@ async function configureGbaLinkSlave(conn, { ereaderProfile = 1, cableOverride =
 
   onProgress?.('Configuring link slave…');
   await sendLinkCommand(conn, GBL_LINK_CMD.SET_MODE_SLAVE);
-  await applyCableOverride(conn, cableOverride, onProgress);
 
   onProgress?.('Enabling link (PIO)…');
   await sendLinkCommand(conn, GBL_LINK_CMD.START_HANDSHAKE);
@@ -620,7 +549,6 @@ export async function reconfigureEreader({ onProgress } = {}) {
   active.lastLinkStatus = null;
 
   const conn = active;
-  const cableOverride = conn.cableOverride ?? 0;
   const ereaderProfile = conn.ereaderProfile ?? 1;
   conn.ereaderCardPreloaded = false;
   conn.ereaderCardByteLength = 0;
@@ -630,7 +558,6 @@ export async function reconfigureEreader({ onProgress } = {}) {
 
   conn.ereaderMode = true;
   conn.ereaderProfile = ereaderProfile;
-  conn.cableOverride = cableOverride;
 
   await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_MODE, GBL_MODE.GBA_EREADER, ereaderProfile]));
   await waitForLinkStatus(LINK_STATUS.DEVICE_READY, 8000);
@@ -639,9 +566,6 @@ export async function reconfigureEreader({ onProgress } = {}) {
   await new Promise((r) => setTimeout(r, 300));
 
   await sendLinkCommand(conn, GBL_LINK_CMD.SET_MODE_SLAVE);
-
-  await sendControlCommand(conn, new Uint8Array([GBL_CMD.SET_CABLE_OVERRIDE, cableOverride]));
-  await new Promise((r) => setTimeout(r, 200));
 
   conn.dataQueue = [];
 
@@ -655,7 +579,6 @@ export async function startGbaLinkSession({
   timeoutMs = 60_000,
   onStatus,
   onLinkStatus,
-  tryCableFlip = true,
 } = {}) {
   if (!active) throw new Error('GB-Link not connected.');
   if (active.transport !== 'gblink') return;
@@ -702,25 +625,6 @@ export async function startGbaLinkSession({
     active.linkSessionReady = false;
     active.onLinkStatus = null;
 
-    const altPath =
-      active.cableOverride === 2 || (active.cableOverride === 0 && active.firmwareInfo?.cable === 1)
-        ? 1
-        : 2;
-    if (tryCableFlip && active.gen3LinkMode) {
-      const altLabel = altPath === 2 ? 'GP4 (GBC path)' : 'GP3 (GBA path)';
-      progress(`No handshake yet — trying SD on ${altLabel}…`);
-      await setCableOverride(altPath);
-      await sendLinkCommand(active, GBL_LINK_CMD.START_HANDSHAKE);
-      startLinkFrameCollector(active);
-      try {
-        await waitConnected();
-        progress('Link connected — exchanging event data…');
-        return;
-      } catch {
-        stopLinkFrameCollector(active);
-      }
-    }
-
     const last = linkStatusLabel(getLastLinkStatus());
     throw new Error(
       `GB-Link session timed out (last status: ${last}). ` +
@@ -730,7 +634,7 @@ export async function startGbaLinkSession({
   }
 }
 
-async function connectUsb({ linkMode = 'ereader', ereaderProfile = 1, cableOverride = 2, onProgress } = {}) {
+async function connectUsb({ linkMode = 'ereader', ereaderProfile = 1, onProgress } = {}) {
   setupDisconnectListeners();
 
   try {
@@ -757,7 +661,8 @@ async function connectUsb({ linkMode = 'ereader', ereaderProfile = 1, cableOverr
 
   await device.selectConfiguration(1);
 
-  const isGblinkFirmware = device.vendorId === 0x2fe3;
+  const isGblinkFirmware = device.vendorId === 0x2fe3
+    || (device.vendorId === 0x1209 && device.productId === 0xb011);
 
   let ifNum = 0;
   let epIn = 1;
@@ -819,9 +724,9 @@ async function connectUsb({ linkMode = 'ereader', ereaderProfile = 1, cableOverr
 
   if (isGblinkFirmware) {
     if (linkMode === 'gen3') {
-      await configureGen3LinkSlave(conn, { cableOverride, onProgress });
+      await configureGen3LinkSlave(conn, { onProgress });
     } else {
-      await configureGbaLinkSlave(conn, { ereaderProfile, cableOverride, onProgress });
+      await configureGbaLinkSlave(conn, { ereaderProfile, onProgress });
     }
   } else {
     try {
@@ -1100,7 +1005,7 @@ async function configureGen3LinkSlaveSerial(conn, opts) {
   await configureGen3LinkSlave(conn, opts);
 }
 
-async function connectSerial({ linkMode = 'ereader', ereaderProfile = 1, cableOverride = 2, onProgress } = {}) {
+async function connectSerial({ linkMode = 'ereader', ereaderProfile = 1, onProgress } = {}) {
   setupDisconnectListeners();
 
   const port = await navigator.serial.requestPort({ filters: SERIAL_FILTERS });
@@ -1134,9 +1039,9 @@ async function connectSerial({ linkMode = 'ereader', ereaderProfile = 1, cableOv
   runSerialReadLoop(conn);
 
   if (linkMode === 'gen3') {
-    await configureGen3LinkSlaveSerial(conn, { cableOverride, onProgress });
+    await configureGen3LinkSlaveSerial(conn, { onProgress });
   } else {
-    await configureGbaLinkSlaveSerial(conn, { ereaderProfile, cableOverride, onProgress });
+    await configureGbaLinkSlaveSerial(conn, { ereaderProfile, onProgress });
   }
 
   return conn;

@@ -8,7 +8,7 @@ Try it live at [ereader.gblink.io](https://ereader.gblink.io) (requires a GB-Lin
 
 ### Requirements
 
-- A **GB-Link adapter** running firmware v2.2.2 or later
+- A **GB-Link adapter** running firmware v3.0.0 or later
 - A **Game Boy Advance link cable**
 - A browser with WebUSB (Chromium-based, Chrome/Edge) or WebSerial (Firefox 151+)
 - e-Reader cards in `.bin`, `.raw`, or `.sav` format (this project doesn't host or link to card files; DLC content can be found at [notblisy/RUBYSAPPHIREDLC](https://github.com/notblisy/RUBYSAPPHIREDLC))

@@ -24,7 +24,6 @@ const WIRE_FLAG = {
   IDLE_RX: 0x02,
   HANDSHAKE: 0x04,
   SUMMARY: 0x08,
-  SD_FLIPPED: 0x10,
   PIO_ARMED: 0x20,
   NO_TRAFFIC: 0x40,
   SESSION: 0x80,
@@ -139,22 +138,14 @@ function describeWireEvent(payload) {
   if (flags & WIRE_FLAG.SESSION) {
     return 'Ready — waiting for the game to connect';
   }
-  if (flags & WIRE_FLAG.SD_FLIPPED) {
-    // Firmware wrong-pin recovery: it saw the game clocking with no data and
-    // switched the SD path itself — the user just needs to retry.
-    const sd = rx === 1 ? 'GP4 (GBC path)' : 'GP3 (GBA path)';
-    return `Game is clocking but nothing was received — switched SD to ${sd}. Press A / Connect on the GBA again.`;
-  }
   if (flags & WIRE_FLAG.PIO_ARMED) {
     return 'Listening for game connection…';
   }
   if (flags & WIRE_FLAG.NO_TRAFFIC) {
-    // rx = firmware's active SD path (1 = GP4/GBC), tx = pin info
-    // (bit0 = SC clock activity since last report, bit1..4 = GP1..GP4 high).
-    const sd = rx === 1 ? 'GP4/GBC' : 'GP3/GBA';
+    // tx = pin info (bit0 = SC clock activity since last report, bit1..4 = GP1..GP4 high).
     const pins = (tx & 0x1f).toString(2).padStart(5, '0');
     const sc = (tx & 0x01) ? 'clocking' : 'idle';
-    return `[wire] no traffic (sd=${sd}, sc=${sc}, pins=0b${pins}, total=${total})`;
+    return `[wire] no traffic (sc=${sc}, pins=0b${pins}, total=${total})`;
   }
   if (flags & WIRE_FLAG.SUMMARY) {
     return `[wire] summary rx=${fmtWord(rx)} tx=${fmtWord(tx)} total=${total}`;
@@ -234,8 +225,7 @@ export async function preloadCardToAdapter(bytes) {
 export async function startScan() {
   const conn = getActiveConnection();
   if (!conn) throw new Error('GB-Link not connected.');
-  // Drop packets queued before this scan so a previous attempt's beacons
-  // can't pre-trip the wrong-pin counter.
+  // Drop packets queued before this scan: they belong to a previous attempt.
   if (conn.dataQueue) conn.dataQueue.length = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
     ensureDataReader();

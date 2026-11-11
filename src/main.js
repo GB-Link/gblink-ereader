@@ -3,7 +3,6 @@ import {
   disconnect,
   getFirmwareInfo,
   getActiveConnection,
-  cableTypeLabel,
   isConnected,
   isTransportAvailable,
   onAdapterDisconnect,
@@ -762,7 +761,6 @@ connectBtn.addEventListener('click', async () => {
     await connect({
       linkMode,
       ereaderProfile: game?.ereaderProfile ?? 1,
-      cableOverride: game?.cableOverride ?? 0,
       onProgress: (message) => {
         log(message);
         instructionText.textContent = message;
@@ -771,17 +769,9 @@ connectBtn.addEventListener('click', async () => {
     setPhase('connected');
 
     const fwAfter = await getFirmwareInfo();
-    const cableNoteAfter =
-      fwAfter?.cable != null ? `, ${cableTypeLabel(fwAfter.cable)}` : '';
-    const overrideNote =
-      game?.cableOverride === 1
-        ? ' (SD→GP3 forced)'
-        : game?.cableOverride === 2
-          ? ' (SD→GP4 forced)'
-          : '';
     const verNoteAfter = fwAfter?.version ? ` fw ${fwAfter.version}` : '';
     const modeLabel = game?.linkMode === 'gen3' ? 'GBA link (Gen 3)' : 'e-Reader mode';
-    log(`Adapter connected (${modeLabel}, 3.3 V${verNoteAfter}${cableNoteAfter}${overrideNote})`);
+    log(`Adapter connected (${modeLabel}, 3.3 V${verNoteAfter})`);
     if (game?.preloadCard) await preloadCardToAdapter();
     startWireLogForGame(game);
     if (cardBytes) await startScan();

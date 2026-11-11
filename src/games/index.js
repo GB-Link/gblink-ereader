@@ -24,7 +24,6 @@ function makeSma4Game({ id, label, ereaderProfile, startGuide = SMA4_START_GUIDE
     label,
     linkMode: 'ereader',
     ereaderProfile,
-    cableOverride: 0,
     cardHint: 'Decoded SMA4 e-Reader card (.bin, 1998 or 2112 bytes)',
     startGuide,
     connectedInstruction: 'In-game: Connect → Lakitu → OK → Send card.',
@@ -45,7 +44,6 @@ export const GAMES = [
     label: 'Pokemon Ruby / Sapphire',
     versionLabel: 'Ruby / Sapphire',
     ereaderProfile: EREADER_PROFILE.POKEMON_RUBY,
-    cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_USA,
   }),
   makePokemonGame({
@@ -53,7 +51,6 @@ export const GAMES = [
     label: 'Pokemon Ruby / Sapphire (JPN)',
     versionLabel: 'Ruby / Sapphire (JPN)',
     ereaderProfile: EREADER_PROFILE.POKEMON_RUBY_JPN,
-    cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_JPN,
   }),
   makePokemonGame({
@@ -61,7 +58,6 @@ export const GAMES = [
     label: 'Pokemon Emerald',
     versionLabel: 'Emerald',
     ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD,
-    cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_EMERALD_USA,
     mysteryMenu: 'Mystery Gift',
     connectedInstruction:
@@ -72,7 +68,6 @@ export const GAMES = [
     label: 'Pokemon Emerald (Émeraude/French)',
     versionLabel: 'Émeraude/French',
     ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD_FRA,
-    cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_EMERALD_FRA,
     mysteryMenu: 'Cadeau Myst.',
     connectedInstruction:
@@ -83,7 +78,6 @@ export const GAMES = [
     label: 'Pokemon Emerald (Smaragd/German)',
     versionLabel: 'Smaragd/German',
     ereaderProfile: EREADER_PROFILE.POKEMON_EMERALD_GER,
-    cableOverride: 0,
     startGuide: POKEMON_START_GUIDE_EMERALD_GER,
     mysteryMenu: 'Geheimgeschehen',
     connectedInstruction:
